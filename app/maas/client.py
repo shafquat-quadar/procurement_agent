@@ -45,10 +45,18 @@ class MaaSClient:
 
     # ------------------------------------------------------------------ token
     def _build_token_request(self) -> tuple[dict[str, str], dict[str, str]]:
-        """Return (headers, form/json body) for the token request.
+        """Return (headers, form body) for the token POST.
 
-        Adapt this to the internal MaaS auth contract. The default assumes an
-        OAuth2 client-credentials flow with the access key/secret in the body.
+        Per the MaaS docs: obtain a client key + secret key from the application
+        portal and POST to the token endpoint (an APIM `.../token` host, provided
+        via TOKEN_URL) to generate an access token, with the subscription key
+        supplied alongside. This default uses the OAuth2 client-credentials grant
+        with the key/secret in the body and the subscription key as an APIM
+        header.
+
+        If your portal instead issues a refresh token, switch `grant_type` to
+        `refresh_token` and send the refresh token here — this is the single
+        place to change the auth contract.
         """
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         if self._settings.subscription_key:
@@ -158,7 +166,7 @@ class MaaSClient:
                 resp = client.post(
                     self._settings.llm_url,
                     headers=headers,
-                    json=request.model_dump(),
+                    json=request.to_payload(),
                 )
         except httpx.TimeoutException as exc:
             logger.error("maas_llm_timeout")

@@ -124,10 +124,38 @@ All configuration is environment-only (never hardcoded). Copy `.env.example` to
 | `CHAT_API_URL` | FastAPI base URL the Chainlit UI calls |
 | `TRACE_DB_PATH` | SQLite trace DB path |
 
-> The exact MaaS auth contract is isolated in `app/maas/client.py`
-> (`_build_token_request` / `_build_llm_headers`). If your internal MaaS uses a
-> different header/body format, adapt those two methods only. If a
-> `maas_sample_code.py` exists in the repo, align them to it.
+**MaaS flow (per the MaaS docs):**
+
+1. **Generate access token** — obtain a client key + secret key from the
+   application portal and POST to the token endpoint (`TOKEN_URL`, an APIM
+   `.../token` host) to generate an access token, supplying the subscription key.
+2. **Prepare the request** — set `model`, `sys_prompt`, `prompt`, and optionally
+   `max_tokens`, `temperature`, `top_p`.
+3. **Submit** — POST the JSON body to `LLM_URL` with the bearer access token and
+   the `Ocp-Apim-Subscription-Key` header. The documented body is:
+
+   ```json
+   {
+     "model": "gemini-3",
+     "sys_prompt": "...",
+     "prompt": "...",
+     "max_tokens": 1200,
+     "temperature": 0.0,
+     "top_p": 0.1,
+     "is_stream": "False"
+   }
+   ```
+
+   > Note: the MaaS docs render `is_stream` as a capitalized **string**
+   > (`"True"`/`"False"`); `MaaSRequest.to_payload()` matches this. If your
+   > instance expects a JSON boolean, change that one line.
+
+> The auth contract is isolated in `app/maas/client.py`
+> (`_build_token_request` / `_build_llm_headers`) and `app/maas/schemas.py`
+> (`to_payload`). If the portal issues a refresh token instead of using
+> client-credentials, switch `grant_type` to `refresh_token` in
+> `_build_token_request` — that is the only place to change. `tests/test_maas_client.py`
+> locks this contract.
 
 ## 7. How to run
 

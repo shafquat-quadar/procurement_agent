@@ -1,0 +1,93 @@
+# Deterministic guardrail policy for the procurement agent.
+# This file is the single source of truth for what the agent may do against SAP.
+# Prompt changes can NEVER bypass this policy: the validator runs before every
+# MCP call regardless of what any LLM proposes.
+
+mode: read_only
+
+allowed_tools:
+  - odata
+  - odata_help
+
+allowed_actions:
+  - service_info
+  - list_entities
+  - describe_entity
+  - list
+  - get
+
+blocked_actions:
+  - create
+  - update
+  - delete
+  - approve
+  - release
+  - post
+
+allowed_services:
+  - sap_purchase_order
+  - sap_purchase_requisition
+  - sap_vendor
+  - sap_material
+  - sap_purchase_info_record
+
+query_limits:
+  max_tool_calls_per_question: 8
+  max_rows_per_call: 50
+  require_filter_for_list: true
+  max_response_chars_to_model: 60000
+  max_response_bytes_per_call: 1048576
+
+required_filters:
+  PurchaseOrderSet:
+    any_of:
+      - PurchaseOrder
+      - Supplier
+      - DocumentDate
+      - Plant
+      - PurchasingOrganization
+      - CompanyCode
+
+  PurchaseOrderItemSet:
+    any_of:
+      - PurchaseOrder
+      - Material
+      - Plant
+      - Supplier
+
+  PurchaseRequisitionSet:
+    any_of:
+      - PurchaseRequisition
+      - Material
+      - Plant
+      - CreatedByUser
+      - DocumentDate
+
+  SupplierSet:
+    any_of:
+      - Supplier
+      - SupplierName
+      - Country
+
+  MaterialSet:
+    any_of:
+      - Material
+      - MaterialDescription
+      - Plant
+
+redaction:
+  enabled: true
+  blocked_terms:
+    - access_token
+    - refresh_token
+    - client_secret
+    - ACCESS_SECRET
+    - SUBSCRIPTION_KEY
+    - authorization
+    - cookie
+    - x-csrf-token
+    - password
+    - bearer
+
+raw_payload:
+  expose_to_user: false
